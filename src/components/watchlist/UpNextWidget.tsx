@@ -1,8 +1,9 @@
 // src/components/watchlist/UpNextWidget.tsx
 import { useEffect, useState } from 'react';
 import { WatchlistItem, updateWatchlistStatus } from '@/lib/watchlist';
-import { getTVEpisodeDetails, getTMDBImageUrl } from '@/lib/tmdb';
+import { getTVEpisodeDetails, getTMDBImageUrl, getMediaDetails } from '@/lib/tmdb';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Play, Check, Loader2, Plus } from 'lucide-react';
 
 interface UpNextWidgetProps {
@@ -13,6 +14,7 @@ interface UpNextWidgetProps {
 interface EpisodeData {
     watchlistItem: WatchlistItem;
     episodeDetails: any;
+    showDetails: any;
 }
 
 export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWidgetProps) {
@@ -49,10 +51,13 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                             return null;
                         }
 
-                        // Attach the show name, as episode details don't include the parent show name
+                        // Also fetch the parent show details to get the show name
+                        const showDetails = await getMediaDetails('tv', item.tmdb_id.toString()).catch(() => null);
+
                         return {
                             watchlistItem: item,
                             episodeDetails: epDetails,
+                            showDetails: showDetails
                         };
                     } catch (error) {
                         return null;
@@ -105,7 +110,7 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
             </h2>
 
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
-                {episodes.map(({ watchlistItem, episodeDetails }) => {
+                {episodes.map(({ watchlistItem, episodeDetails, showDetails }) => {
                     const epImage = episodeDetails.still_path;
                     const isUpdating = updatingId === watchlistItem.id;
 
@@ -114,37 +119,40 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                             key={watchlistItem.id}
                             className="flex-none w-72 lg:w-80 relative group glass-morphism rounded-xl overflow-hidden snap-start hover:ring-2 hover:ring-blue-500/50 transition-all"
                         >
-                            <div className="relative aspect-video">
+                            <Link href={`/media/${watchlistItem.tmdb_id}?type=tv`} className="relative block aspect-video">
                                 <Image
                                     src={getTMDBImageUrl(epImage, 'w500')}
                                     alt={episodeDetails.name || 'Episode Image'}
                                     fill
                                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
 
                                 <div className="absolute bottom-0 left-0 p-4 w-full">
                                     <div className="flex justify-between items-end gap-2">
                                         <div className="overflow-hidden">
-                                            <p className="text-xs text-blue-400 font-bold mb-1 uppercase tracking-wider">
-                                                S{episodeDetails.season_number} E{episodeDetails.episode_number}
+                                            <p className="text-[10px] text-blue-400 font-bold mb-0.5 uppercase tracking-wider line-clamp-1">
+                                                {showDetails?.name || 'Serie TV'} • S{episodeDetails.season_number} E{episodeDetails.episode_number}
                                             </p>
-                                            <h3 className="text-white font-semibold line-clamp-1" title={episodeDetails.name}>
+                                            <h3 className="text-white font-semibold line-clamp-1 text-sm lg:text-base" title={episodeDetails.name}>
                                                 {episodeDetails.name || `Episodio ${episodeDetails.episode_number}`}
                                             </h3>
                                         </div>
 
                                         <button
-                                            onClick={() => handleIncrement(watchlistItem, episodeDetails.season_number, episodeDetails.episode_number)}
+                                            onClick={(e) => {
+                                                e.preventDefault(); // Prevent Link navigation
+                                                handleIncrement(watchlistItem, episodeDetails.season_number, episodeDetails.episode_number);
+                                            }}
                                             disabled={isUpdating}
-                                            className="flex-none bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2.5 transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50"
+                                            className="flex-none bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2.5 transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 relative z-10"
                                             title="Segna come visto"
                                         >
                                             {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            </Link>
                         </div>
                     );
                 })}
