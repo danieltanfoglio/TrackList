@@ -7,12 +7,33 @@ import { getUserWatchlist, WatchlistItem } from '@/lib/watchlist';
 import { getMediaDetails } from '@/lib/tmdb';
 import MediaCard from '@/components/media/MediaCard';
 import { Bookmark, Loader2, Filter } from 'lucide-react';
+
+function WatchlistMediaWrapper({ item }: { item: WatchlistItem }) {
+    const [media, setMedia] = useState<any>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        getMediaDetails(item.media_type, item.tmdb_id.toString()).then(data => {
+            if (mounted) {
+                setMedia({ ...data, media_type: item.media_type });
+            }
+        }).catch(err => console.error(err));
+        return () => { mounted = false; };
+    }, [item.media_type, item.tmdb_id]);
+
+    if (!media) {
+        return (
+            <div className="aspect-[2/3] rounded-xl bg-white/5 animate-pulse border border-white/10" />
+        );
+    }
+
+    return <MediaCard media={media} watchlistItem={item} />;
+}
 import Link from 'next/link';
 
 export default function WatchlistPage() {
     const { user, loading: authLoading } = useAuth();
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-    const [mediaDetails, setMediaDetails] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'movie' | 'tv'>('all');
 
@@ -29,20 +50,6 @@ export default function WatchlistPage() {
             setLoading(true);
             const items = await getUserWatchlist(user!.id);
             setWatchlist(items);
-
-            // Fetch TMDB details for each item to show the cards correctly
-            // In a real app, you might want to cache this or store essential info in the DB
-            const details = await Promise.all(
-                items.map(item => getMediaDetails(item.media_type, item.tmdb_id.toString()))
-            );
-
-            // Inject media_type into details for MediaCard
-            const detailsWithTypes = details.map((d, i) => ({
-                ...d,
-                media_type: items[i].media_type
-            }));
-
-            setMediaDetails(detailsWithTypes);
         } catch (error) {
             console.error('Error fetching watchlist:', error);
         } finally {
@@ -73,7 +80,7 @@ export default function WatchlistPage() {
         );
     }
 
-    const filteredMedia = mediaDetails.filter(m => filter === 'all' || m.media_type === filter);
+    const filteredWatchlist = watchlist.filter(item => filter === 'all' || item.media_type === filter);
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-12">
@@ -105,10 +112,10 @@ export default function WatchlistPage() {
                 </div>
             </div>
 
-            {filteredMedia.length > 0 ? (
+            {filteredWatchlist.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                    {filteredMedia.map((media) => (
-                        <MediaCard key={media.id} media={media} />
+                    {filteredWatchlist.map((item) => (
+                        <WatchlistMediaWrapper key={item.id} item={item} />
                     ))}
                 </div>
             ) : (
