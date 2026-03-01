@@ -6,6 +6,7 @@ import { useAuth } from '@/components/layout/AuthProvider';
 import { getUserWatchlist, WatchlistItem } from '@/lib/watchlist';
 import { getMediaDetails } from '@/lib/tmdb';
 import MediaCard from '@/components/media/MediaCard';
+import UpNextWidget from '@/components/watchlist/UpNextWidget';
 import { Bookmark, Loader2, Filter } from 'lucide-react';
 
 function WatchlistMediaWrapper({ item }: { item: WatchlistItem }) {
@@ -84,6 +85,8 @@ export default function WatchlistPage() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-12">
+            <UpNextWidget watchlist={watchlist} onProgressUpdated={fetchWatchlist} />
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-2">La mia Watchlist</h1>

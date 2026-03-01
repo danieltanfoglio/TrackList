@@ -62,6 +62,13 @@ export async function getWatchProviders(type: 'movie' | 'tv', id: string) {
 }
 
 /**
+ * get specific episode details
+ */
+export async function getTVEpisodeDetails(tvId: string | number, season: number, episode: number) {
+    return fetchTMDB(`/tv/${tvId}/season/${season}/episode/${episode}`);
+}
+
+/**
  * recommendations - Get recommended content based on ID
  */
 export async function getRecommendations(type: 'movie' | 'tv', id: string, page = 1) {
