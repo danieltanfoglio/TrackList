@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getMediaDetails, getTMDBImageUrl, getRecommendations } from "@/lib/tmdb";
 import StreamingProviders from "@/components/media/StreamingProviders";
 import EpisodeTracker from "@/components/media/EpisodeTracker";
+import MovieTracker from "@/components/media/MovieTracker";
 import MediaCard from "@/components/media/MediaCard";
 import WatchlistButton from "@/components/media/WatchlistButton";
 import RatingStars from "@/components/media/RatingStars";
@@ -140,6 +141,12 @@ export default async function MediaDetail({
 
                         {type === 'tv' && (
                             <EpisodeTracker
+                                tmdbId={parseInt(id)}
+                            />
+                        )}
+
+                        {type === 'movie' && (
+                            <MovieTracker
                                 tmdbId={parseInt(id)}
                             />
                         )}
