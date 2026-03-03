@@ -1,10 +1,10 @@
 // src/components/watchlist/UpNextWidget.tsx
 import { useEffect, useState } from 'react';
 import { WatchlistItem, updateWatchlistStatus } from '@/lib/watchlist';
-import { getTVEpisodeDetails, getTMDBImageUrl, getMediaDetails } from '@/lib/tmdb';
+import { getTVSeasonDetails, getTMDBImageUrl, getMediaDetails } from '@/lib/tmdb';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Play, Check, Loader2, Plus } from 'lucide-react';
+import { Play, Loader2, Plus } from 'lucide-react';
 
 interface UpNextWidgetProps {
     watchlist: WatchlistItem[];
@@ -13,8 +13,9 @@ interface UpNextWidgetProps {
 
 interface EpisodeData {
     watchlistItem: WatchlistItem;
-    episodeDetails: any;
+    episodeDetails: any;   // the episode object from the season
     showDetails: any;
+    seasonEpisodeCount: number;
 }
 
 export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWidgetProps) {
@@ -40,26 +41,28 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                     const nextEpisodeNum = (item.episode_progress || 0) + 1;
 
                     try {
-                        const epDetails = await getTVEpisodeDetails(
-                            item.tmdb_id.toString(),
-                            currentSeason,
-                            nextEpisodeNum
-                        );
+                        // Fetch season details to get episode list and count
+                        const seasonData = await getTVSeasonDetails(item.tmdb_id, currentSeason);
+                        const episodes: any[] = seasonData?.episodes ?? [];
+                        const episodeCount = episodes.length;
 
-                        // If the episode fetch fails (e.g. season ended), we just ignore it for the widget for now
-                        if (epDetails.success === false) {
+                        // Find the next episode in the season
+                        const epDetails = episodes.find((e: any) => e.episode_number === nextEpisodeNum);
+
+                        if (!epDetails) {
+                            // No next episode in this season – skip from widget
                             return null;
                         }
 
-                        // Also fetch the parent show details to get the show name
                         const showDetails = await getMediaDetails('tv', item.tmdb_id.toString()).catch(() => null);
 
                         return {
                             watchlistItem: item,
                             episodeDetails: epDetails,
-                            showDetails: showDetails
+                            showDetails,
+                            seasonEpisodeCount: episodeCount,
                         };
-                    } catch (error) {
+                    } catch {
                         return null;
                     }
                 })
@@ -72,16 +75,35 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
         fetchNextEpisodes();
     }, [watchlist]);
 
-    const handleIncrement = async (item: WatchlistItem, currentSeason: number, nextEpisode: number) => {
+    const handleIncrement = async (
+        item: WatchlistItem,
+        currentSeason: number,
+        markedEpisode: number,
+        seasonEpisodeCount: number,
+        totalSeasons: number
+    ) => {
         try {
             setUpdatingId(item.id);
+
+            let newSeason = currentSeason;
+            let newEpisode = markedEpisode;
+
+            // If we just watched the last episode, auto-advance to next season ep 1
+            if (markedEpisode >= seasonEpisodeCount) {
+                if (currentSeason < totalSeasons) {
+                    newSeason = currentSeason + 1;
+                    newEpisode = 1;
+                }
+                // If last season too, just record the episode as-is
+            }
+
             await updateWatchlistStatus(item.id, {
-                season_progress: currentSeason,
-                episode_progress: nextEpisode
+                season_progress: newSeason,
+                episode_progress: newEpisode,
             });
             if (onProgressUpdated) onProgressUpdated();
         } catch (error) {
-            console.error("Error updating progress:", error);
+            console.error('Error updating progress:', error);
         } finally {
             setUpdatingId(null);
         }
@@ -110,9 +132,10 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
             </h2>
 
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
-                {episodes.map(({ watchlistItem, episodeDetails, showDetails }) => {
+                {episodes.map(({ watchlistItem, episodeDetails, showDetails, seasonEpisodeCount }) => {
                     const epImage = episodeDetails.still_path;
                     const isUpdating = updatingId === watchlistItem.id;
+                    const totalSeasons = showDetails?.number_of_seasons ?? 999;
 
                     return (
                         <div
@@ -141,8 +164,14 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
 
                                         <button
                                             onClick={(e) => {
-                                                e.preventDefault(); // Prevent Link navigation
-                                                handleIncrement(watchlistItem, episodeDetails.season_number, episodeDetails.episode_number);
+                                                e.preventDefault();
+                                                handleIncrement(
+                                                    watchlistItem,
+                                                    episodeDetails.season_number,
+                                                    episodeDetails.episode_number,
+                                                    seasonEpisodeCount,
+                                                    totalSeasons
+                                                );
                                             }}
                                             disabled={isUpdating}
                                             className="flex-none bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2.5 transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 relative z-10"

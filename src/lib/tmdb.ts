@@ -69,6 +69,13 @@ export async function getTVEpisodeDetails(tvId: string | number, season: number,
 }
 
 /**
+ * get season details (includes episode_count)
+ */
+export async function getTVSeasonDetails(tvId: string | number, season: number) {
+    return fetchTMDB(`/tv/${tvId}/season/${season}`);
+}
+
+/**
  * recommendations - Get recommended content based on ID
  */
 export async function getRecommendations(type: 'movie' | 'tv', id: string, page = 1) {
