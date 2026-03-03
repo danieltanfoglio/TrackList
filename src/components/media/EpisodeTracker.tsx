@@ -73,7 +73,8 @@ export default function EpisodeTracker({ tmdbId }: EpisodeTrackerProps) {
             const item = await getWatchlistItem(user!.id, tmdbId, 'tv');
             if (item) {
                 setSeason(item.season_progress || 1);
-                setEpisode(item.episode_progress || 1);
+                // episode_progress=0 means "ready to watch ep1", display as 1
+                setEpisode(item.episode_progress ?? 1);
                 setStatus(item.status as any);
                 setWatchlistItemId(item.id);
             }
@@ -129,8 +130,8 @@ export default function EpisodeTracker({ tmdbId }: EpisodeTrackerProps) {
             if (season >= totalSeasons) {
                 showError('Sei all\'ultimo episodio dell\'ultima stagione!');
             } else {
-                // Auto-advance to next season ep 1
-                handleUpdate(season + 1, 1, status);
+                // Auto-advance to next season; save 0 so widget shows ep1 as next
+                handleUpdate(season + 1, 0, status);
             }
         } else {
             handleUpdate(season, episode + 1, status);
@@ -162,6 +163,8 @@ export default function EpisodeTracker({ tmdbId }: EpisodeTrackerProps) {
     }
 
     const maxEp = seasonInfo?.episodeCount ?? null;
+    // episode_progress=0 means starting the season → display as 1
+    const displayEpisode = episode === 0 ? 1 : episode;
 
     return (
         <div className="glass-morphism p-6 flex flex-col gap-6 w-full relative">
@@ -228,8 +231,8 @@ export default function EpisodeTracker({ tmdbId }: EpisodeTrackerProps) {
                         >
                             <Minus className="w-4 h-4" />
                         </button>
-                        <span className={`flex-1 text-center font-bold text-lg ${maxEp && episode >= maxEp ? 'text-yellow-400' : 'text-white'}`}>
-                            {episode}
+                        <span className={`flex-1 text-center font-bold text-lg ${maxEp && displayEpisode >= maxEp ? 'text-yellow-400' : 'text-white'}`}>
+                            {displayEpisode}
                         </span>
                         <button
                             onClick={handleEpisodeInc}
@@ -242,7 +245,7 @@ export default function EpisodeTracker({ tmdbId }: EpisodeTrackerProps) {
             </div>
 
             {/* Hint when at last episode */}
-            {maxEp && episode >= maxEp && season < totalSeasons && (
+            {maxEp && displayEpisode >= maxEp && season < totalSeasons && (
                 <p className="text-[11px] text-yellow-500/80 text-center -mt-2">
                     ✨ Premi + sull&apos;episodio per avanzare alla stagione {season + 1}
                 </p>

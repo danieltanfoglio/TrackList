@@ -13,9 +13,10 @@ interface UpNextWidgetProps {
 
 interface EpisodeData {
     watchlistItem: WatchlistItem;
-    episodeDetails: any;   // the episode object from the season
+    episodeDetails: any;
     showDetails: any;
     seasonEpisodeCount: number;
+    displaySeason: number; // the actual season of the episode shown (may differ from watchlistItem.season_progress)
 }
 
 export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWidgetProps) {
@@ -38,29 +39,40 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
             const data = await Promise.all(
                 watchingTV.map(async (item) => {
                     const currentSeason = item.season_progress || 1;
+                    // episode_progress = 0 means "starting the season, next ep is 1"
                     const nextEpisodeNum = (item.episode_progress || 0) + 1;
 
                     try {
-                        // Fetch season details to get episode list and count
+                        const showDetails = await getMediaDetails('tv', item.tmdb_id.toString()).catch(() => null);
+                        const totalSeasons: number = showDetails?.number_of_seasons ?? 1;
+
+                        // Fetch current season details
                         const seasonData = await getTVSeasonDetails(item.tmdb_id, currentSeason);
-                        const episodes: any[] = seasonData?.episodes ?? [];
-                        const episodeCount = episodes.length;
+                        const seasonEpisodes: any[] = seasonData?.episodes ?? [];
+                        const episodeCount = seasonEpisodes.length;
 
-                        // Find the next episode in the season
-                        const epDetails = episodes.find((e: any) => e.episode_number === nextEpisodeNum);
+                        // Try to find the next episode in the current season
+                        let epDetails = seasonEpisodes.find((e: any) => e.episode_number === nextEpisodeNum);
+                        let displaySeason = currentSeason;
+                        let displaySeasonEpisodeCount = episodeCount;
 
-                        if (!epDetails) {
-                            // No next episode in this season – skip from widget
-                            return null;
+                        // If not found (we're past the last episode), try the next season
+                        if (!epDetails && currentSeason < totalSeasons) {
+                            const nextSeasonData = await getTVSeasonDetails(item.tmdb_id, currentSeason + 1);
+                            const nextSeasonEps: any[] = nextSeasonData?.episodes ?? [];
+                            epDetails = nextSeasonEps.find((e: any) => e.episode_number === 1);
+                            displaySeason = currentSeason + 1;
+                            displaySeasonEpisodeCount = nextSeasonEps.length;
                         }
 
-                        const showDetails = await getMediaDetails('tv', item.tmdb_id.toString()).catch(() => null);
+                        if (!epDetails) return null;
 
                         return {
                             watchlistItem: item,
                             episodeDetails: epDetails,
                             showDetails,
-                            seasonEpisodeCount: episodeCount,
+                            seasonEpisodeCount: displaySeasonEpisodeCount,
+                            displaySeason,
                         };
                     } catch {
                         return null;
@@ -77,7 +89,7 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
 
     const handleIncrement = async (
         item: WatchlistItem,
-        currentSeason: number,
+        markedSeason: number,
         markedEpisode: number,
         seasonEpisodeCount: number,
         totalSeasons: number
@@ -85,16 +97,18 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
         try {
             setUpdatingId(item.id);
 
-            let newSeason = currentSeason;
-            let newEpisode = markedEpisode;
+            let newSeason = markedSeason;
+            // Use 0 to mean "starting the new season, no episode watched yet"
+            // so the widget calculates: 0 + 1 = episode 1
+            let newEpisode: number = markedEpisode;
 
-            // If we just watched the last episode, auto-advance to next season ep 1
+            // If we just marked the last episode of the season, advance to next season
             if (markedEpisode >= seasonEpisodeCount) {
-                if (currentSeason < totalSeasons) {
-                    newSeason = currentSeason + 1;
-                    newEpisode = 1;
+                if (markedSeason < totalSeasons) {
+                    newSeason = markedSeason + 1;
+                    newEpisode = 0; // ← 0 means "ep1 is next"
                 }
-                // If last season too, just record the episode as-is
+                // If it's also the last season, just record the episode as-is
             }
 
             await updateWatchlistStatus(item.id, {
@@ -132,7 +146,7 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
             </h2>
 
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
-                {episodes.map(({ watchlistItem, episodeDetails, showDetails, seasonEpisodeCount }) => {
+                {episodes.map(({ watchlistItem, episodeDetails, showDetails, seasonEpisodeCount, displaySeason }) => {
                     const epImage = episodeDetails.still_path;
                     const isUpdating = updatingId === watchlistItem.id;
                     const totalSeasons = showDetails?.number_of_seasons ?? 999;
@@ -155,7 +169,7 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                                     <div className="flex justify-between items-end gap-2">
                                         <div className="overflow-hidden">
                                             <p className="text-[10px] text-blue-400 font-bold mb-0.5 uppercase tracking-wider line-clamp-1">
-                                                {showDetails?.name || 'Serie TV'} • S{episodeDetails.season_number} E{episodeDetails.episode_number}
+                                                {showDetails?.name || 'Serie TV'} • S{displaySeason} E{episodeDetails.episode_number}
                                             </p>
                                             <h3 className="text-white font-semibold line-clamp-1 text-sm lg:text-base" title={episodeDetails.name}>
                                                 {episodeDetails.name || `Episodio ${episodeDetails.episode_number}`}
@@ -167,7 +181,7 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                                                 e.preventDefault();
                                                 handleIncrement(
                                                     watchlistItem,
-                                                    episodeDetails.season_number,
+                                                    displaySeason,
                                                     episodeDetails.episode_number,
                                                     seasonEpisodeCount,
                                                     totalSeasons
