@@ -75,13 +75,13 @@ export default function MediaCard({ media, watchlistItem }: MediaCardProps) {
                         <div className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/5 text-blue-400 border border-blue-500/20">
                             {watchlistItem.media_type === 'tv' ? (
                                 watchlistItem.status === 'completed' ? (
-                                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Completato</span>
+                                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Completato</span>
                                 ) : (
-                                    `S${watchlistItem.season_progress || 1} E${watchlistItem.episode_progress || 0}`
+                                    `S${watchlistItem.season_progress || 1} E${watchlistItem.episode_progress || 1}`
                                 )
                             ) : (
                                 watchlistItem.status === 'completed' ? (
-                                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Visto</span>
+                                    <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Visto</span>
                                 ) : 'Da vedere'
                             )}
                         </div>
