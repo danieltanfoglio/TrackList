@@ -1,4 +1,3 @@
-// src/app/watchlist/page.tsx
 'use client';
 
 import { useEffect, useState, useRef } from 'react';

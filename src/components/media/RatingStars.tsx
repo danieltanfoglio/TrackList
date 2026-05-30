@@ -1,4 +1,3 @@
-// src/components/media/RatingStars.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -67,6 +66,7 @@ export default function RatingStars({ tmdbId, mediaType }: RatingStarsProps) {
                             onMouseLeave={() => setHover(null)}
                             onClick={() => handleRate(value)}
                             className="p-0.5 focus:outline-none transition-transform hover:scale-125"
+                            aria-label={`Vota ${value} su 10`}
                         >
                             <Star
                                 className={`w-5 h-5 ${(hover || rating || 0) >= value

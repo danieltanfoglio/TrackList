@@ -1,6 +1,10 @@
-// src/app/page.tsx
 import SearchBar from "@/components/search/SearchBar";
 import { Film, TrendingUp, Star } from "lucide-react";
+
+export const metadata = {
+  title: "TrackList - Home",
+  description: "Cerca film e serie TV, gestisci la tua watchlist e traccia il progresso dei tuoi episodi.",
+};
 
 export default function Home() {
   return (

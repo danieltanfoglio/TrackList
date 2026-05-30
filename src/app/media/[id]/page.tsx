@@ -1,4 +1,3 @@
-// src/app/media/[id]/page.tsx
 import Image from 'next/image';
 import { getMediaDetails, getTMDBImageUrl, getRecommendations } from "@/lib/tmdb";
 import StreamingProviders from "@/components/media/StreamingProviders";
@@ -7,16 +6,40 @@ import MovieTracker from "@/components/media/MovieTracker";
 import MediaCard from "@/components/media/MediaCard";
 import WatchlistButton from "@/components/media/WatchlistButton";
 import RatingStars from "@/components/media/RatingStars";
-import { Star, Clock, Calendar, Globe } from "lucide-react";
+import { Star, Clock, Calendar } from "lucide-react";
 import { MediaType, TMDBMedia } from "@/types/tmdb";
+import type { Metadata } from "next";
+
+type Props = {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ type: string }>;
+};
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+    const resolvedSearchParams = await searchParams;
+    const type = (resolvedSearchParams.type as MediaType) || 'movie';
+    const resolvedParams = await params;
+    try {
+        const media = await getMediaDetails(type, resolvedParams.id);
+        const title = media.title || media.name || 'Dettaglio';
+        return {
+            title: `${title} - TrackList`,
+            description: media.overview?.slice(0, 160) || `Scopri ${title} su TrackList.`,
+            openGraph: {
+                title,
+                description: media.overview?.slice(0, 160),
+                images: media.poster_path ? [{ url: getTMDBImageUrl(media.poster_path) }] : [],
+            },
+        };
+    } catch {
+        return { title: 'Dettaglio - TrackList' };
+    }
+}
 
 export default async function MediaDetail({
     params,
     searchParams,
-}: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<{ type: string }>;
-}) {
+}: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
     const type = (resolvedSearchParams.type as MediaType) || 'movie';
@@ -44,6 +67,7 @@ export default async function MediaDetail({
                         fill
                         className="object-cover opacity-40"
                         priority
+                        sizes="100vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 to-transparent" />
 
@@ -55,6 +79,7 @@ export default async function MediaDetail({
                                     alt={title}
                                     fill
                                     className="object-cover"
+                                    sizes="(max-width: 768px) 0vw, 256px"
                                 />
                             </div>
 

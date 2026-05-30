@@ -1,14 +1,20 @@
-// src/app/search/page.tsx
 import { searchMulti } from "@/lib/tmdb";
 import MediaCard from "@/components/media/MediaCard";
 import SearchBar from "@/components/search/SearchBar";
 import { TMDBMedia } from "@/types/tmdb";
+import type { Metadata } from "next";
 
-export default async function SearchPage({
-    searchParams,
-}: {
-    searchParams: Promise<{ q: string }>;
-}) {
+type Props = { searchParams: Promise<{ q: string }> };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+    const resolved = await searchParams;
+    return {
+        title: resolved.q ? `"${resolved.q}" - Ricerca TrackList` : "Ricerca - TrackList",
+        description: `Cerca film e serie TV su TrackList${resolved.q ? `: ${resolved.q}` : ''}.`,
+    };
+}
+
+export default async function SearchPage({ searchParams }: Props) {
     const resolvedSearchParams = await searchParams;
     const query = resolvedSearchParams.q || "";
     let results: TMDBMedia[] = [];

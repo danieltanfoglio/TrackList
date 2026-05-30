@@ -1,4 +1,5 @@
-// src/components/watchlist/UpNextWidget.tsx
+'use client';
+
 import { useEffect, useState } from 'react';
 import { WatchlistItem, updateWatchlistStatus } from '@/lib/watchlist';
 import { getTVSeasonDetails, getTMDBImageUrl, getMediaDetails } from '@/lib/tmdb';
@@ -159,9 +160,11 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                             <Link href={`/media/${watchlistItem.tmdb_id}?type=tv`} className="relative block aspect-video">
                                 <Image
                                     src={getTMDBImageUrl(epImage, 'w500')}
-                                    alt={episodeDetails.name || 'Episode Image'}
+                                    alt={episodeDetails.name || 'Prossimo episodio'}
                                     fill
+                                    sizes="(max-width: 768px) 288px, 320px"
                                     className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                    loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
 
@@ -189,7 +192,7 @@ export default function UpNextWidget({ watchlist, onProgressUpdated }: UpNextWid
                                             }}
                                             disabled={isUpdating}
                                             className="flex-none bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2.5 transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 relative z-10"
-                                            title="Segna come visto"
+                                            aria-label="Segna episodio come visto"
                                         >
                                             {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                                         </button>

@@ -1,4 +1,3 @@
-// src/components/media/MovieTracker.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -88,6 +87,7 @@ export default function MovieTracker({
                     onClick={() => handleUpdate('to_watch')}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${status === 'to_watch' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'
                         }`}
+                    aria-label="Segna come da vedere"
                 >
                     <Eye className="w-4 h-4" /> Da vedere
                 </button>
@@ -95,6 +95,7 @@ export default function MovieTracker({
                     onClick={() => handleUpdate('completed')}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${status === 'completed' ? 'bg-green-600 text-white shadow-lg shadow-green-600/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'
                         }`}
+                    aria-label="Segna come visto"
                 >
                     <CheckCircle className="w-4 h-4" /> Visto
                 </button>

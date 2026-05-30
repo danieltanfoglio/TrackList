@@ -1,4 +1,3 @@
-// src/components/media/MediaCard.tsx
 import Image from 'next/image';
 import Link from 'next/link';
 import { Film, Tv, Star, CheckCircle } from 'lucide-react';
@@ -33,32 +32,32 @@ export default function MediaCard({ media, watchlistItem }: MediaCardProps) {
         <Link
             href={`/media/${media.id}?type=${media.media_type}`}
             className="group relative flex flex-col glass-morphism overflow-hidden hover:ring-2 hover:ring-blue-500/50 transition-all duration-300"
+            aria-label={`${title} (${year}) - ${typeLabel}`}
         >
             <div className="relative aspect-[2/3] overflow-hidden">
                 <Image
                     src={getTMDBImageUrl(media.poster_path)}
                     alt={title || 'Poster'}
                     fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                {/* Watchlist Status Badge */}
                 {statusConfig && (
                     <div className={`absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1 rounded-full backdrop-blur-md text-[10px] font-bold shadow-lg border ${statusConfig.color} z-10 transition-transform group-hover:scale-105`}>
                         {statusConfig.label}
                     </div>
                 )}
 
-                {/* Badge Media Type */}
-                <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-wider text-white" aria-label={typeLabel}>
                     {typeIcon}
                     {typeLabel}
                 </div>
 
-                {/* Rating Badge */}
                 {media.vote_average > 0 && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/90 backdrop-blur-md text-[10px] font-bold text-black border border-yellow-400">
+                    <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/90 backdrop-blur-md text-[10px] font-bold text-black border border-yellow-400" aria-label={`Voto: ${media.vote_average.toFixed(1)}`}>
                         <Star className="w-3 h-3 fill-black" />
                         {media.vote_average.toFixed(1)}
                     </div>

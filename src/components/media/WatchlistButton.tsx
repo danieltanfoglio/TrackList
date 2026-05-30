@@ -1,4 +1,3 @@
-// src/components/media/WatchlistButton.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -89,7 +88,7 @@ export default function WatchlistButton({ tmdbId, mediaType, className }: Watchl
 
     if (loading) {
         return (
-            <button disabled className={`bg-white/5 text-gray-400 py-3 px-6 rounded-xl flex items-center justify-center gap-2 ${className}`}>
+            <button disabled className={`bg-white/5 text-gray-400 py-3 px-6 rounded-xl flex items-center justify-center gap-2 ${className}`} aria-label="Caricamento watchlist">
                 <Loader2 className="w-5 h-5 animate-spin" /> Controllo...
             </button>
         );
@@ -100,6 +99,7 @@ export default function WatchlistButton({ tmdbId, mediaType, className }: Watchl
             <button
                 onClick={handleToggle}
                 disabled={actionLoading}
+                aria-label={isInWatchlist ? 'Rimuovi dalla watchlist' : 'Aggiungi alla watchlist'}
                 className={`flex-1 font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group ${isInWatchlist
                         ? 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
                         : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-500'
@@ -121,6 +121,7 @@ export default function WatchlistButton({ tmdbId, mediaType, className }: Watchl
             {isInWatchlist && (
                 <button
                     onClick={handleFavorite}
+                    aria-label={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                     className={`px-4 rounded-xl border transition-all flex items-center justify-center ${isFavorite
                             ? 'bg-red-500/10 border-red-500/50 text-red-500'
                             : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'

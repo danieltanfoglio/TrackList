@@ -1,4 +1,3 @@
-// src/components/media/StreamingProviders.tsx
 import Image from 'next/image';
 
 interface Provider {
@@ -28,7 +27,6 @@ export default function StreamingProviders({ providers }: StreamingProvidersProp
         ...(providers.buy || [])
     ];
 
-    // Remove duplicates based on provider_id
     const uniqueProviders = Array.from(
         new Map(allProviders.map(item => [item.provider_id, item])).values()
     );
@@ -46,7 +44,9 @@ export default function StreamingProviders({ providers }: StreamingProvidersProp
                             src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
                             alt={provider.provider_name}
                             fill
+                            sizes="48px"
                             className="object-cover"
+                            loading="lazy"
                         />
                     </div>
                     <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">

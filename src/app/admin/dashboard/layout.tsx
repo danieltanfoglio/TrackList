@@ -37,7 +37,7 @@ export default function AdminDashboardLayout({
 
                 <div className="p-4 border-t border-white/10">
                     <form action={adminLogout}>
-                        <button type="submit" className="w-full py-3 px-4 bg-white/5 hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <button type="submit" className="w-full py-3 px-4 bg-white/5 hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-xl transition-colors flex items-center justify-center gap-2" aria-label="Logout amministratore">
                             Logout Admin
                         </button>
                     </form>
@@ -53,7 +53,7 @@ export default function AdminDashboardLayout({
                         <span className="font-bold">Admin Panel</span>
                     </div>
                     <form action={adminLogout}>
-                        <button type="submit" className="px-3 py-1.5 bg-white/5 text-sm hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-lg transition-colors">
+                        <button type="submit" className="px-3 py-1.5 bg-white/5 text-sm hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-lg transition-colors" aria-label="Logout">
                             Logout
                         </button>
                     </form>
