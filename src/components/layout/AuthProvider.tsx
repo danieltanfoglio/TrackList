@@ -1,7 +1,7 @@
 // src/components/layout/AuthProvider.tsx
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
@@ -32,71 +32,57 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     const [loading, setLoading] = useState(true);
     const [isImpersonating, setIsImpersonating] = useState(false);
     const router = useRouter();
-
-    const checkBanAndRedirect = useCallback(async (userId: string) => {
-        try {
-            const { data } = await supabase
-                .from('profiles')
-                .select('banned, ban_reason')
-                .eq('id', userId)
-                .single();
-
-            if (data?.banned) {
-                await supabase.auth.signOut();
-                const reason = encodeURIComponent(data.ban_reason || 'Account sospeso');
-                window.location.href = `/banned?reason=${reason}`;
-                return true;
-            }
-        } catch {
-            // Profile might not exist yet; ignore
-        }
-        return false;
-    }, []);
+    const loadingRef = useRef(false);
 
     useEffect(() => {
-        let cancelled = false;
-        let loadingSet = false;
+        let mounted = true;
+        const timer = setTimeout(() => { if (mounted) setLoading(false); }, 8000);
 
-        const done = () => {
-            if (!loadingSet) {
-                loadingSet = true;
+        const init = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!mounted) return;
+
+                setSession(session);
+                setUser(session?.user ?? null);
+
+                if (session?.user) {
+                    try {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('banned, ban_reason')
+                            .eq('id', session.user.id)
+                            .single();
+                        if (profile?.banned) {
+                            await supabase.auth.signOut();
+                            const reason = encodeURIComponent(profile.ban_reason || 'Account sospeso');
+                            window.location.href = `/banned?reason=${reason}`;
+                            return;
+                        }
+                    } catch {
+                        // Profile might not exist yet; ignore
+                    }
+                }
+            } catch (err) {
+                console.error('Auth session error:', err);
+            } finally {
+                if (mounted && !loadingRef.current) {
+                    loadingRef.current = true;
+                    setLoading(false);
+                }
+            }
+        };
+
+        init();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (!loadingRef.current) {
+                loadingRef.current = true;
                 setLoading(false);
             }
-        };
-
-        const getSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (cancelled) { done(); return; }
-
-            setSession(session);
-            setUser(session?.user ?? null);
-
-            if (session?.user) {
-                const banned = await checkBanAndRedirect(session.user.id);
-                if (banned) { done(); return; }
-            }
-
-            done();
-        };
-
-        getSession();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (cancelled) { done(); return; }
-
-            setSession(session);
-            setUser(session?.user ?? null);
-
-            if (session?.user) {
-                const banned = await checkBanAndRedirect(session.user.id);
-                if (banned) { done(); return; }
-            }
-
-            done();
-
-            if (_event === 'SIGNED_IN') {
-                router.refresh();
-            }
+            if (_event === 'SIGNED_IN') router.refresh();
             if (_event === 'SIGNED_OUT') {
                 if (typeof window !== 'undefined' && window.location.pathname !== '/banned') {
                     router.push('/');
@@ -106,10 +92,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         });
 
         return () => {
-            cancelled = true;
+            mounted = false;
+            clearTimeout(timer);
             subscription.unsubscribe();
         };
-    }, []);
+    }, [router]);
 
     useEffect(() => {
         if (typeof document !== 'undefined') {
