@@ -1,16 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getUsers, AdminUser } from '@/lib/supabase-admin';
-import { Users, Search, Bookmark, Clock, Ban, CheckCircle, Shield, Key, LogIn, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { AdminUser } from '@/lib/supabase-admin';
+import { Users, Search, Bookmark, Clock, Ban, CheckCircle, Key, LogIn, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { banUserAction, unbanUserAction, updateUserRoleAction, resetUserPasswordAction, impersonateUserAction } from '../../actions';
-
-const ROLE_BADGES: Record<string, { label: string; color: string }> = {
-    user: { label: 'Utente', color: 'text-gray-400 bg-white/5' },
-    moderator: { label: 'Mod', color: 'text-green-400 bg-green-500/10' },
-    admin: { label: 'Admin', color: 'text-red-400 bg-red-500/10' },
-};
+import { banUserAction, unbanUserAction, updateUserRoleAction, resetUserPasswordAction, impersonateUserAction, getUsersAction } from '../../actions';
 
 const ROLE_OPTIONS = [
     { value: 'user', label: 'Utente' },
@@ -25,18 +19,17 @@ export default function AdminUsersPage() {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [passwordResult, setPasswordResult] = useState<{ userId: string; password: string } | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
-    const [impersonating, setImpersonating] = useState(false);
+
+    const loadUsers = useCallback(async () => {
+        setLoading(true);
+        const result = await getUsersAction(search || undefined);
+        setAllUsers(result.users);
+        setLoading(false);
+    }, [search]);
 
     useEffect(() => {
         loadUsers();
-    }, []);
-
-    async function loadUsers() {
-        setLoading(true);
-        const users = await getUsers();
-        setAllUsers(users);
-        setLoading(false);
-    }
+    }, [loadUsers]);
 
     const filteredUsers = search
         ? allUsers.filter((u) => u.username?.toLowerCase().includes(search.toLowerCase()))
@@ -99,32 +92,26 @@ export default function AdminUsersPage() {
     async function handleImpersonate(userId: string) {
         setActionLoading(userId);
         setActionError(null);
-        setImpersonating(true);
 
-        try {
-            const result = await impersonateUserAction(userId);
-            if (result?.error) {
-                setActionError(result.error);
-                setImpersonating(false);
+        const result = await impersonateUserAction(userId);
+        if (result?.error) {
+            setActionError(result.error);
+            setActionLoading(null);
+            return;
+        }
+        if (result?.email && result?.otp) {
+            const { error } = await supabase.auth.verifyOtp({
+                email: result.email,
+                token: result.otp,
+                type: 'magiclink',
+            });
+            if (error) {
+                setActionError(error.message);
+                setActionLoading(null);
                 return;
             }
-            if (result?.email && result?.otp) {
-                const { error } = await supabase.auth.verifyOtp({
-                    email: result.email,
-                    token: result.otp,
-                    type: 'magiclink',
-                });
-                if (error) {
-                    setActionError(error.message);
-                    setImpersonating(false);
-                    return;
-                }
-                document.cookie = `impersonating_user=${result.email}; path=/; max-age=3600`;
-                window.location.href = '/';
-            }
-        } catch {
-            setActionError('Errore durante l\'impersonificazione');
-            setImpersonating(false);
+            document.cookie = `impersonating_user=${result.email}; path=/; max-age=3600`;
+            window.location.href = '/';
         }
         setActionLoading(null);
     }
@@ -163,13 +150,13 @@ export default function AdminUsersPage() {
             )}
 
             <form
-                onSubmit={(e) => { e.preventDefault(); }}
+                onSubmit={(e) => { e.preventDefault(); setSearch(e.currentTarget.q.value); }}
                 className="relative max-w-md"
             >
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    name="q"
+                    defaultValue={search}
                     placeholder="Cerca per username..."
                     className="w-full bg-white/5 border border-white/10 focus:border-blue-500/50 rounded-xl py-3 pl-11 pr-4 text-white outline-none transition-all text-sm"
                     aria-label="Cerca utenti"
@@ -212,7 +199,7 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td className="py-4 px-4 hidden sm:table-cell">
                                             <select
-                                                defaultValue={(u as any).role || 'user'}
+                                                defaultValue={u.role || 'user'}
                                                 onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                                 disabled={isLoading}
                                                 className="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-300 outline-none focus:border-blue-500/50 cursor-pointer disabled:opacity-50"
@@ -224,7 +211,7 @@ export default function AdminUsersPage() {
                                             </select>
                                         </td>
                                         <td className="py-4 px-4 hidden sm:table-cell">
-                                            {(u as any).banned ? (
+                                            {u.banned ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 text-xs font-medium">
                                                     <Ban className="w-3 h-3" /> Bannato
                                                 </span>
@@ -251,7 +238,7 @@ export default function AdminUsersPage() {
                                             <div className="flex items-center gap-1.5 justify-end">
                                                 <button
                                                     onClick={() => handleImpersonate(u.id)}
-                                                    disabled={isLoading || impersonating}
+                                                    disabled={isLoading}
                                                     className="p-2 rounded-lg hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-30"
                                                     aria-label={`Login as ${u.username || 'utente'}`}
                                                     title="Login As"
@@ -267,7 +254,7 @@ export default function AdminUsersPage() {
                                                 >
                                                     <Key className="w-4 h-4" />
                                                 </button>
-                                                {(u as any).banned ? (
+                                                {u.banned ? (
                                                     <button
                                                         onClick={() => handleUnban(u.id)}
                                                         disabled={isLoading}

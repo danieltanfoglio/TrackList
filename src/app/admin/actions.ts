@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { banUser as banUserDb, unbanUser as unbanUserDb, updateUserRole as updateUserRoleDb, resetUserPassword as resetUserPasswordDb, impersonateUser as impersonateUserDb } from '@/lib/supabase-admin';
+import { banUser as banUserDb, unbanUser as unbanUserDb, updateUserRole as updateUserRoleDb, resetUserPassword as resetUserPasswordDb, impersonateUser as impersonateUserDb, getUsers as getUsersDb } from '@/lib/supabase-admin';
 
 export async function adminLogin(formData: FormData) {
     const email = formData.get('email');
@@ -102,4 +102,14 @@ export async function impersonateUserAction(userId: string) {
     if (!result) return { error: 'Impossibile generare il link di impersonificazione' };
 
     return { success: true, email: result.email, otp: result.otp };
+}
+
+export async function getUsersAction(search?: string): Promise<{ users: import('@/lib/supabase-admin').AdminUser[] }> {
+    const cookieStore = await cookies();
+    if (cookieStore.get('admin_token')?.value !== 'authenticated') {
+        return { users: [] };
+    }
+
+    const users = await getUsersDb(search);
+    return { users };
 }

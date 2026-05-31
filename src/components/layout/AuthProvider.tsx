@@ -54,37 +54,45 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }, []);
 
     useEffect(() => {
-        let mounted = true;
+        let cancelled = false;
+        let loadingSet = false;
+
+        const done = () => {
+            if (!loadingSet) {
+                loadingSet = true;
+                setLoading(false);
+            }
+        };
 
         const getSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!mounted) return;
+            if (cancelled) { done(); return; }
 
             setSession(session);
             setUser(session?.user ?? null);
 
             if (session?.user) {
                 const banned = await checkBanAndRedirect(session.user.id);
-                if (banned) return;
+                if (banned) { done(); return; }
             }
 
-            setLoading(false);
+            done();
         };
 
         getSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (!mounted) return;
+            if (cancelled) { done(); return; }
 
             setSession(session);
             setUser(session?.user ?? null);
 
             if (session?.user) {
                 const banned = await checkBanAndRedirect(session.user.id);
-                if (banned) return;
+                if (banned) { done(); return; }
             }
 
-            setLoading(false);
+            done();
 
             if (_event === 'SIGNED_IN') {
                 router.refresh();
@@ -98,10 +106,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         });
 
         return () => {
-            mounted = false;
+            cancelled = true;
             subscription.unsubscribe();
         };
-    }, [router, checkBanAndRedirect]);
+    }, []);
 
     useEffect(() => {
         if (typeof document !== 'undefined') {
