@@ -17,18 +17,33 @@ export interface Database {
                     username: string | null
                     avatar_url: string | null
                     updated_at: string | null
+                    role: 'user' | 'moderator' | 'admin'
+                    banned: boolean
+                    ban_reason: string | null
+                    banned_at: string | null
+                    banned_by: string | null
                 }
                 Insert: {
                     id: string
                     username?: string | null
                     avatar_url?: string | null
                     updated_at?: string | null
+                    role?: 'user' | 'moderator' | 'admin'
+                    banned?: boolean
+                    ban_reason?: string | null
+                    banned_at?: string | null
+                    banned_by?: string | null
                 }
                 Update: {
                     id?: string
                     username?: string | null
                     avatar_url?: string | null
                     updated_at?: string | null
+                    role?: 'user' | 'moderator' | 'admin'
+                    banned?: boolean
+                    ban_reason?: string | null
+                    banned_at?: string | null
+                    banned_by?: string | null
                 }
             }
             watchlist: {

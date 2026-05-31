@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Film, Tv, Bookmark, User, LogOut, Menu, X } from 'lucide-react';
+import { Search, Film, Tv, Bookmark, User, LogOut, Menu, X, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
-    const { user, signOut } = useAuth();
+    const { user, signOut, isImpersonating, exitImpersonation } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const pathname = usePathname();
 
@@ -31,7 +31,25 @@ export default function Navbar() {
     ];
 
     return (
-        <nav className="sticky top-0 z-50 w-full glass border-b border-white/10 px-4 py-3">
+        <>
+            {isImpersonating && (
+                <div className="sticky top-0 z-[60] bg-yellow-600/20 border-b border-yellow-500/30 backdrop-blur-md px-4 py-2.5">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium">
+                            <ShieldAlert className="w-4 h-4" />
+                            <span>Stai operando come <strong>{user?.email || 'utente'}</strong></span>
+                        </div>
+                        <button
+                            onClick={exitImpersonation}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg text-xs font-medium transition-colors"
+                            aria-label="Torna alla modalità admin"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" /> Torna all&apos;Admin
+                        </button>
+                    </div>
+                </div>
+            )}
+            <nav className="sticky top-0 z-50 w-full glass border-b border-white/10 px-4 py-3">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2 group" aria-label="Home">
                     <div className="bg-blue-600 p-1.5 rounded-lg group-hover:bg-blue-500 transition-colors">
@@ -190,5 +208,6 @@ export default function Navbar() {
                 </div>
             )}
         </nav>
+        </>
     );
 }

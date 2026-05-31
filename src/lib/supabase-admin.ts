@@ -13,6 +13,9 @@ export interface AdminUser {
   username: string | null;
   created_at: string | null;
   watchlist_count: number;
+  role: 'user' | 'moderator' | 'admin';
+  banned: boolean;
+  ban_reason: string | null;
 }
 
 export interface PopularContent {
@@ -71,11 +74,11 @@ export async function getUsers(search?: string): Promise<AdminUser[]> {
   const client = getAdminClient();
   if (!client) return [];
 
-  let query = client.from('profiles').select('id, username, updated_at').order('updated_at', { ascending: false });
+  let query = client.from('profiles').select('id, username, updated_at, role, banned, ban_reason').order('updated_at', { ascending: false });
   if (search) {
     query = query.ilike('username', `%${search}%`);
   }
-  const { data: profiles } = await query.limit(100) as unknown as { data: { id: string; username: string | null; updated_at: string | null }[] | null };
+  const { data: profiles } = await query.limit(100) as unknown as { data: { id: string; username: string | null; updated_at: string | null; role: string; banned: boolean; ban_reason: string | null }[] | null };
   if (!profiles) return [];
 
   const usersWithCounts = await Promise.all(
@@ -89,6 +92,9 @@ export async function getUsers(search?: string): Promise<AdminUser[]> {
         username: p.username,
         created_at: p.updated_at,
         watchlist_count: count ?? 0,
+        role: (p.role || 'user') as 'user' | 'moderator' | 'admin',
+        banned: p.banned ?? false,
+        ban_reason: p.ban_reason ?? null,
       };
     })
   );
@@ -153,4 +159,104 @@ export async function getActivity(limit = 50): Promise<ActivityItem[]> {
     rating: w.rating,
     created_at: w.updated_at,
   }));
+}
+
+export async function banUser(userId: string, reason: string, bannedBy: string): Promise<boolean> {
+  const client = getAdminClient();
+  if (!client) return false;
+
+  const { error } = await (client
+    .from('profiles') as any)
+    .update({
+      banned: true,
+      ban_reason: reason,
+      banned_at: new Date().toISOString(),
+      banned_by: bannedBy,
+    })
+    .eq('id', userId);
+
+  return !error;
+}
+
+export async function unbanUser(userId: string): Promise<boolean> {
+  const client = getAdminClient();
+  if (!client) return false;
+
+  const { error } = await (client
+    .from('profiles') as any)
+    .update({
+      banned: false,
+      ban_reason: null,
+      banned_at: null,
+      banned_by: null,
+    })
+    .eq('id', userId);
+
+  return !error;
+}
+
+export async function updateUserRole(userId: string, role: 'user' | 'moderator' | 'admin'): Promise<boolean> {
+  const client = getAdminClient();
+  if (!client) return false;
+
+  const { error } = await (client
+    .from('profiles') as any)
+    .update({ role })
+    .eq('id', userId);
+
+  return !error;
+}
+
+export async function resetUserPassword(userId: string): Promise<string | null> {
+  const client = getAdminClient();
+  if (!client) return null;
+
+  const admin = (client.auth as any).admin;
+  if (!admin) return null;
+
+  const tempPassword = `Temp@${crypto.randomUUID().slice(0, 8)}`;
+
+  const { error } = await admin.updateUserById(userId, {
+    password: tempPassword,
+  });
+
+  if (error) return null;
+
+  return tempPassword;
+}
+
+export async function impersonateUser(userId: string): Promise<{ email: string; otp: string } | null> {
+  const client = getAdminClient();
+  if (!client) return null;
+
+  const admin = (client.auth as any).admin;
+  if (!admin) return null;
+
+  const { data: authUser, error: userError } = await admin.getUserById(userId);
+  if (userError || !authUser?.user?.email) return null;
+
+  const email = authUser.user.email;
+
+  const { data, error } = await admin.generateLink({
+    type: 'magiclink',
+    email,
+    options: { should_create_user: false },
+  });
+
+  if (error || !data?.properties?.email_otp) return null;
+
+  return { email, otp: data.properties.email_otp };
+}
+
+export async function checkUserBanned(userId: string): Promise<{ banned: boolean; ban_reason: string | null } | null> {
+  const client = getAdminClient();
+  if (!client) return null;
+
+  const { data } = await (client
+    .from('profiles') as any)
+    .select('banned, ban_reason')
+    .eq('id', userId)
+    .single();
+
+  return data ? { banned: data.banned ?? false, ban_reason: data.ban_reason } : null;
 }

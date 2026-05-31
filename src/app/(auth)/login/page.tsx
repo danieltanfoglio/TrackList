@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Film, Lock, Mail, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -10,21 +11,40 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
 
-        if (error) {
-            setError(error.message);
+        if (signInError) {
+            setError(signInError.message);
             setLoading(false);
+            return;
         }
+
+        if (data?.user) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('banned, ban_reason')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profile?.banned) {
+                await supabase.auth.signOut();
+                const reason = encodeURIComponent(profile.ban_reason || 'Account sospeso');
+                router.push(`/banned?reason=${reason}`);
+                return;
+            }
+        }
+
+        router.push('/');
     };
 
     return (
